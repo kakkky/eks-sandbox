@@ -2,6 +2,7 @@ package main
 
 import (
 	"html/template"
+	"log"
 	"net/http"
 	"sync"
 )
@@ -32,8 +33,16 @@ func postTodoHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
+func logger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("%s %s %s", r.RemoteAddr, r.Method, r.URL)
+		next.ServeHTTP(w, r)
+	})
+}
+
 func main() {
-	http.HandleFunc("GET /", getTodoHandler)
-	http.HandleFunc("POST /", postTodoHandler)
+	http.Handle("GET /", logger(http.HandlerFunc(getTodoHandler)))
+	http.Handle("POST /", logger(http.HandlerFunc(postTodoHandler)))
+
 	http.ListenAndServe(":8080", nil)
 }
