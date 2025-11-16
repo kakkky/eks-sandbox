@@ -13,7 +13,7 @@ type Todo struct {
 
 var todos []Todo
 var mu sync.Mutex
-var tmpl = template.Must(template.ParseFiles("index.html"))
+var tmpl = template.Must(template.ParseFiles("./index.html"))
 
 func getTodoHandler(w http.ResponseWriter, r *http.Request) {
 	tmpl.Execute(w, todos)
