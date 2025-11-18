@@ -57,3 +57,21 @@ resource "aws_iam_role_policy_attachment" "eks_node_group_AmazonEKS_CNI_Policy" 
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
   role       = aws_iam_role.eks_node_group_role.name
 }
+
+# IAM role for developer access
+resource "aws_iam_role" "developer_role" {
+  name               = "developer-role"
+  assume_role_policy = data.aws_iam_policy_document.developer_assume_role_policy.json
+}
+
+data "aws_iam_policy_document" "developer_assume_role_policy" {
+  statement {
+    sid    = "AllowAssumeRoleForDeveloper"
+    effect = "Allow"
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::846869429016:user/yuta"]
+    }
+    actions = ["sts:AssumeRole"]
+  }
+}
