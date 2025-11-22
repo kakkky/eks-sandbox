@@ -7,18 +7,30 @@ import (
 	"sync"
 )
 
+// Todo represents a single todo item
 type Todo struct {
 	Title string
 }
 
-var todos []Todo
-var mu sync.Mutex
-var tmpl = template.Must(template.ParseFiles("./index.html"))
-
-func getTodoHandler(w http.ResponseWriter, r *http.Request) {
-	tmpl.Execute(w, todos)
+// In-memory storage for todo items
+type TodoListStore struct {
+	mu       sync.Mutex
+	todoList []Todo
 }
 
+var todoListStore = &TodoListStore{
+	todoList: []Todo{},
+}
+
+// Template for rendering the todo list
+var tmpl = template.Must(template.ParseFiles("./index.html"))
+
+// getTodoHandler handles GET requests to retrieve the todo list
+func getTodoHandler(w http.ResponseWriter, r *http.Request) {
+	tmpl.Execute(w, todoListStore.todoList)
+}
+
+// postTodoHandler handles POST requests to add a new todo item
 func postTodoHandler(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "Failed to parse form", http.StatusBadRequest)
@@ -26,23 +38,42 @@ func postTodoHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	title := r.FormValue("title")
 	if title != "" {
-		mu.Lock()
-		todos = append(todos, Todo{Title: title})
-		mu.Unlock()
+		todoListStore.mu.Lock()
+		todoListStore.todoList = append(todoListStore.todoList, Todo{Title: title})
+		todoListStore.mu.Unlock()
 	}
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+
+	http.Redirect(w, r, "/todos", http.StatusSeeOther)
 }
 
-func logger(next http.Handler) http.Handler {
+// responseRecorder is a custom ResponseWriter to capture the status code
+type responseRecorder struct {
+	http.ResponseWriter
+	status int
+}
+
+func (r *responseRecorder) WriteHeader(code int) {
+	r.status = code
+	r.ResponseWriter.WriteHeader(code)
+}
+
+// accessLogMiddleware logs each incoming HTTP request
+func accessLogMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("%s %s %s", r.RemoteAddr, r.Method, r.URL)
-		next.ServeHTTP(w, r)
+		rec := &responseRecorder{ResponseWriter: w, status: 200}
+		next.ServeHTTP(rec, r)
+		log.Printf("%s %s %s %d", r.RemoteAddr, r.Method, r.URL, rec.status)
 	})
 }
 
 func main() {
-	http.Handle("GET /", logger(http.HandlerFunc(getTodoHandler)))
-	http.Handle("POST /", logger(http.HandlerFunc(postTodoHandler)))
+	mux := http.NewServeMux()
 
-	http.ListenAndServe(":8080", nil)
+	mux.Handle("GET /todos", http.HandlerFunc(getTodoHandler))
+	mux.Handle("POST /todos", http.HandlerFunc(postTodoHandler))
+	mux.Handle("GET /healthz", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	http.ListenAndServe(":8080", accessLogMiddleware(mux))
 }
