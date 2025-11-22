@@ -310,6 +310,45 @@ module "zone" {
   }
 }
 
+# ecr repository
+resource "aws_ecr_repository" "ecr_repository" {
+  name = "eks-sandbox-ecr-repository"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  tags = {
+    Name        = "eks-sandbox-ecr-repository"
+    Terraform   = "true"
+    Environment = "dev"
+  }
+}
+
+# vpc endpoint for accessing ECR from private subnet
+resource "aws_vpc_endpoint" "vpc_endpoint_for_ecr_api" {
+  vpc_id            = module.vpc.vpc_id
+  service_name      = "com.amazonaws.ap-northeast-1.ecr.api"
+  vpc_endpoint_type = "Interface"
+  subnet_ids        = module.vpc.private_subnets
+  tags = {
+    Name        = "eks-sandbox-ecr-api-endpoint"
+    Terraform   = "true"
+    Environment = "dev"
+  }
+}
+
+resource "aws_vpc_endpoint" "vpc_endpoint_for_ecr_dkr" {
+  vpc_id            = module.vpc.vpc_id
+  service_name      = "com.amazonaws.ap-northeast-1.ecr.dkr"
+  vpc_endpoint_type = "Interface"
+  subnet_ids        = module.vpc.private_subnets
+  tags = {
+    Name        = "eks-sandbox-ecr-dkr-endpoint"
+    Terraform   = "true"
+    Environment = "dev"
+  }
+}
 
 # IAM role for developer access
 resource "aws_iam_role" "developer_role" {
