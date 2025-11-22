@@ -72,6 +72,10 @@ module "eks" {
           referenced_security_group_id = aws_security_group.alb_sg.id
         }
       }
+
+      labels = {
+        role = "app-node"
+      }
     }
   }
 
