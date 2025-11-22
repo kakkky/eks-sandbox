@@ -50,37 +50,47 @@ module "eks" {
   create_iam_role = false
   iam_role_arn    = aws_iam_role.eks_cluster_role.arn
 
+  tags = {
+    Name        = "eks-sandbox-cluster"
+    Terraform   = "true"
+    Environment = "dev"
+  }
+}
 
-  eks_managed_node_groups = {
-    eks_node_group = {
-      desired_capacity = 2
-      max_capacity     = 2
-      min_capacity     = 2
+# node group
+module "eks_node_group" {
+  source = "terraform-aws-modules/eks/aws//modules/eks-managed-node-group"
 
-      instance_types = ["t3.nano"]
+  name         = "eks-sandbox-node-group"
+  cluster_name = module.eks.cluster_name
 
-      create_iam_role = false
-      iam_role_arn    = aws_iam_role.eks_node_group_role.arn
+  subnet_ids   = module.vpc.private_subnets
+  desired_size = 2
+  max_size     = 3
+  min_size     = 1
 
-      create_security_group = true
-      security_group_ingress_rules = {
-        alb_nodeport = {
-          description                  = "Allow ALB to communicate with Node Group"
-          from_port                    = 30000
-          to_port                      = 32767
-          protocol                     = "tcp"
-          referenced_security_group_id = aws_security_group.alb_sg.id
-        }
-      }
+  instance_types = ["t3.nano"]
 
-      labels = {
-        role = "app-node"
-      }
+  create_iam_role = false
+  iam_role_arn    = aws_iam_role.eks_node_group_role.arn
+
+  create_security_group = true
+  security_group_ingress_rules = {
+    alb_nodeport = {
+      description                  = "Allow ALB to communicate with Node Group"
+      from_port                    = 30000
+      to_port                      = 32767
+      protocol                     = "tcp"
+      referenced_security_group_id = aws_security_group.alb_sg.id
     }
   }
 
+  labels = {
+    role = "app"
+  }
+
   tags = {
-    Name        = "eks-sandbox-cluster"
+    Name        = "eks-sandbox-node-group"
     Terraform   = "true"
     Environment = "dev"
   }
