@@ -20,7 +20,8 @@ module "vpc" {
 # eks cluster
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "1.21"
+  version = "~> 21.0"
+
 
   name               = "eks-sandbox-cluster"
   kubernetes_version = "1.33"
@@ -70,6 +71,8 @@ module "eks_node_group" {
   min_size     = 1
 
   instance_types = ["t3.nano"]
+
+  cluster_service_cidr = module.eks.cluster_service_cidr
 
   create_iam_role = false
   iam_role_arn    = aws_iam_role.eks_node_group_role.arn
@@ -158,7 +161,8 @@ resource "aws_iam_role_policy_attachment" "eks_node_group_AmazonEKS_CNI_Policy" 
 
 # Attach ALB target group to ASG of EKS Node Group
 resource "aws_autoscaling_attachment" "eks_node_group_attachment" {
-  autoscaling_group_name = module.eks_node_group.node_group_autoscaling_group_names[0]
+  count                  = length(module.eks_node_group.node_group_autoscaling_group_names)
+  autoscaling_group_name = module.eks_node_group.node_group_autoscaling_group_names[count.index]
   lb_target_group_arn    = aws_lb_target_group.alb_tg_to_ng.arn
 }
 
@@ -205,7 +209,7 @@ resource "aws_lb_listener" "https" {
 
   default_action {
     type             = "forward"
-    target_group_arn = module.alb.target_group_arn
+    target_group_arn = aws_lb_target_group.alb_tg_to_ng.arn
   }
 }
 
@@ -236,7 +240,7 @@ resource "aws_lb_target_group" "alb_tg_to_ng" {
 
 # ACM Certificate for ALB
 resource "aws_acm_certificate" "alb_cert" {
-  domain_name       = module.zone.zone_name
+  domain_name       = module.zone.name
   validation_method = "DNS"
 
   tags = {
