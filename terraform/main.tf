@@ -186,6 +186,30 @@ resource "aws_security_group" "alb_sg" {
   }
 }
 
+# Route53 Zone
+module "zone" {
+  source = "terraform-aws-modules/route53/aws"
+
+  name = "eks-sandbox-todo-list.com"
+
+  records = {
+    app = {
+      type = "A"
+      alias = {
+        name    = module.alb.dns_name
+        zone_id = module.alb.zone_id
+      }
+    }
+  }
+
+  tags = {
+    Name        = "eks-sandbox-zone"
+    Terraform   = "true"
+    Environment = "dev"
+  }
+}
+
+
 # IAM role for developer access
 resource "aws_iam_role" "developer_role" {
   name               = "developer-role"
