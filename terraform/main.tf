@@ -161,8 +161,7 @@ resource "aws_iam_role_policy_attachment" "eks_node_group_AmazonEKS_CNI_Policy" 
 
 # Attach ALB target group to ASG of EKS Node Group
 resource "aws_autoscaling_attachment" "eks_node_group_attachment" {
-  count                  = length(module.eks_node_group.node_group_autoscaling_group_names)
-  autoscaling_group_name = module.eks_node_group.node_group_autoscaling_group_names[count.index]
+  autoscaling_group_name = module.eks_node_group.node_group_autoscaling_group_names[0]
   lb_target_group_arn    = aws_lb_target_group.alb_tg_to_ng.arn
 }
 
