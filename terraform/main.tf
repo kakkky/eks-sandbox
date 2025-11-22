@@ -156,8 +156,89 @@ resource "aws_iam_role_policy_attachment" "eks_node_group_AmazonEKS_CNI_Policy" 
   role       = aws_iam_role.eks_node_group_role.name
 }
 
+# ALB
+module "alb" {
+  source = "terraform-aws-modules/alb/aws"
 
+  name    = "eks-sandbox-alb"
+  vpc_id  = module.vpc.vpc_id
+  subnets = module.vpc.public_subnets
 
+  security_groups = [aws_security_group.alb_sg.id]
+
+  tags = {
+    Name        = "eks-sandbox-alb"
+    Terraform   = "true"
+    Environment = "dev"
+  }
+}
+
+# ALB Listeners
+resource "aws_lb_listener" "http_redirect_to_https" {
+  load_balancer_arn = module.alb.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type = "redirect"
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
+  }
+}
+
+resource "aws_lb_listener" "https" {
+  load_balancer_arn = module.alb.arn
+  port              = 443
+  protocol          = "HTTPS"
+
+  ssl_policy      = "ELBSecurityPolicy-2016-08"
+  certificate_arn = aws_acm_certificate.alb_cert.arn
+
+  default_action {
+    type             = "forward"
+    target_group_arn = module.alb.target_group_arn
+  }
+}
+
+# target group for listener of ALB
+resource "aws_lb_target_group" "alb_tg_to_ng" {
+  name        = "eks-sandbox-alb-tg"
+  port        = 30000
+  protocol    = "HTTP"
+  target_type = "instance"
+  vpc_id      = module.vpc.vpc_id
+
+  health_check {
+    path                = "/healthz"
+    protocol            = "HTTP"
+    matcher             = "200-399"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+  }
+
+  tags = {
+    Name        = "eks-sandbox-alb-tg"
+    Terraform   = "true"
+    Environment = "dev"
+  }
+}
+
+# ACM Certificate for ALB
+resource "aws_acm_certificate" "alb_cert" {
+  domain_name       = module.zone.zone_name
+  validation_method = "DNS"
+
+  tags = {
+    Name        = "eks-sandbox-alb-cert"
+    Terraform   = "true"
+    Environment = "dev"
+  }
+}
 
 # Security Group for ALB
 resource "aws_security_group" "alb_sg" {
