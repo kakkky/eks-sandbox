@@ -200,11 +200,12 @@ resource "aws_security_group" "alb_sg" {
 module "zone" {
   source = "terraform-aws-modules/route53/aws"
 
-  name = "eks-sandbox-todo-list.com"
+  name = "eks-sandbox.com"
 
   records = {
     app = {
       type = "A"
+      name = "app"
       alias = {
         name    = module.alb.dns_name
         zone_id = module.alb.zone_id
