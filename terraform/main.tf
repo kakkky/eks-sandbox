@@ -215,7 +215,7 @@ resource "aws_lb_listener" "https" {
 # target group for listener of ALB
 resource "aws_lb_target_group" "alb_tg_to_ng" {
   name        = "eks-sandbox-alb-tg"
-  port        = 30000
+  port        = 30080
   protocol    = "HTTP"
   target_type = "instance"
   vpc_id      = module.vpc.vpc_id
