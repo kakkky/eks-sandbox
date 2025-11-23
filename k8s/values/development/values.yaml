@@ -1,0 +1,28 @@
+deployment:
+  name: app
+  replicaCount: 1
+  nodeSelector:
+    role: app
+  image:
+    repository: app
+    tag: "20251123173531"
+  containerPort: 8080
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+  nginx:
+    resources:
+      requests:
+        cpu: "10m"
+        memory: "32Mi"
+      limits:
+        cpu: "100m"
+        memory: "128Mi"
+service:
+  type: NodePort
+  port: 8080
+  nodePort: 30080

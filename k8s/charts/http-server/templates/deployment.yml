@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    app: {{ .Chart.Name }}
+spec:
+  replicas: {{ .Values.deployment.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+    spec:
+      nodeSelector:
+        role: {{ .Values.deployment.nodeSelector.role }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.deployment.image.repository }}:{{ .Values.deployment.image.tag }}"
+          ports:
+            - containerPort: {{ .Values.deployment.containerPort }}
+          resources:
+            requests:
+              cpu: {{ .Values.deployment.resources.requests.cpu }}
+              memory: {{ .Values.deployment.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.deployment.resources.limits.cpu }}
+              memory: {{ .Values.deployment.resources.limits.memory }}
+        - name: nginx-sidecar
+          image: nginx:1.25
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+          resources:
+            requests:
+              cpu: {{ .Values.deployment.nginx.resources.requests.cpu }}
+              memory: {{ .Values.deployment.nginx.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.deployment.nginx.resources.limits.cpu }}
+              memory: {{ .Values.deployment.nginx.resources.limits.memory }}
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: {{ .Chart.Name }}-nginx-config

@@ -1,0 +1,19 @@
+environments:
+  development:
+    kubeContext: kind-sandbox   # kind 用 context
+    values:
+      - values/development/values.yaml
+
+  production:
+    kubeContext: eks-sandbox   # EKS 用 context
+    values:
+      - values/production/values.yaml
+---
+releases:
+  - name: app
+    namespace: "{{ .Environment.Name }}"  # development / production
+    chart: ./charts/http-server
+    values:
+      - values/{{ .Environment.Name }}/values.yaml
+    installed: true
+    atomic: true
