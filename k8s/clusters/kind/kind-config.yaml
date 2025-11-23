@@ -2,13 +2,15 @@ kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
   - role: control-plane
+
+  - role: worker
     kubeadmConfigPatches:
       - |
-        kind: InitConfiguration
+        kind: JoinConfiguration
         nodeRegistration:
           kubeletExtraArgs:
             node-labels: "role=app"
     extraPortMappings:
-      - containerPort: 30000
+      - containerPort: 30080
         hostPort: 8080
         protocol: TCP

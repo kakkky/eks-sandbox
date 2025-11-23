@@ -5,7 +5,7 @@ deployment:
     role: app
   image:
     repository: app
-    tag: "20251123173531"
+    tag: "20251123200401"
   containerPort: 8080
   resources:
     requests:
