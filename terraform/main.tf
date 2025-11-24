@@ -88,10 +88,6 @@ module "eks_node_group" {
     }
   }
 
-  labels = {
-    role = "app"
-  }
-
   tags = {
     Name        = "eks-sandbox-node-group"
     Terraform   = "true"
