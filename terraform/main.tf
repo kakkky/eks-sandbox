@@ -66,8 +66,8 @@ module "eks_node_group" {
   cluster_name = module.eks.cluster_name
 
   subnet_ids   = module.vpc.private_subnets
-  desired_size = 2
-  max_size     = 3
+  desired_size = 1
+  max_size     = 2
   min_size     = 1
 
   instance_types = ["t3.nano"]
