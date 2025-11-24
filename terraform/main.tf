@@ -350,7 +350,7 @@ resource "aws_vpc_endpoint" "vpc_endpoint_for_ecr_dkr" {
   }
 }
 
-# IAM role for developer access
+# IAM role for developer
 resource "aws_iam_role" "developer_role" {
   name               = "developer-role"
   assume_role_policy = data.aws_iam_policy_document.developer_assume_role_policy.json
@@ -366,4 +366,9 @@ data "aws_iam_policy_document" "developer_assume_role_policy" {
     }
     actions = ["sts:AssumeRole"]
   }
+}
+
+resource "aws_iam_role_policy_attachment" "developer_ecr_fullaccess" {
+  role       = aws_iam_role.developer_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess"
 }
