@@ -1,0 +1,36 @@
+# Deployment settings
+deployment:
+  name: myapp
+  replicaCount: 2
+  # Application container image
+  image:
+    repository: myapp
+    tag: "latest"
+  
+  # Application container port
+  containerPort: 8080
+  
+  # Application container resources
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+  
+  # Nginx sidecar resources
+  nginx:
+    resources:
+      requests:
+        cpu: "10m"
+        memory: "32Mi"
+      limits:
+        cpu: "100m"
+        memory: "128Mi"
+
+# Service settings
+service:
+  type: NodePort
+  port: 8080
+  nodePort: 30080

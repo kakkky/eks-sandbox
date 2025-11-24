@@ -1,0 +1,11 @@
+apiVersion: v2
+name: http-server
+description: A Helm chart for HTTP server with nginx reverse proxy
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - http-server
+  - nginx
+maintainers:
+  - name: kakkky
