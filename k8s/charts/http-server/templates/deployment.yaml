@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-{{ .Chart.Name }}-deployment
+  name: {{ .Release.Name }}-{{ .Chart.Name }}
   labels:
     app: {{ .Release.Name }}-{{ .Chart.Name }}
 spec:
