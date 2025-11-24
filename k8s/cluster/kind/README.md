@@ -47,6 +47,13 @@ helmfile -e development apply
 ```
 You must set environment: `development`, therefore kubectl access the kind cluster by referring `kind-sandbox` context.
 
+### helmfile destroy
+To destroy the deployed resources in the kind cluster, use the following command:
+```sh
+cd ./k8s
+helmfile -e development destroy
+```
+
 ### Setting kubeconfig context
 You can use kubectl commands to interact with the kind cluster, by setting below.
 
