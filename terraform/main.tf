@@ -132,7 +132,7 @@ data "aws_iam_policy_document" "eks_node_group_assume_role_policy" {
     effect = "Allow"
     principals {
       type        = "Service"
-      identifiers = ["eks.amazonaws.com"]
+      identifiers = ["ec2.amazonaws.com"]
     }
     actions = [
       "sts:AssumeRole"
