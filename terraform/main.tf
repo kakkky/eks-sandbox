@@ -23,7 +23,7 @@ module "eks" {
   version = "~> 21.0"
 
 
-  name               = "eks-sandbox-cluster"
+  name               = "eks-sandbox"
   kubernetes_version = "1.33"
 
   vpc_id     = module.vpc.vpc_id
