@@ -19,12 +19,9 @@ module "vpc" {
 
 # eks cluster
 module "eks" {
-  source  = "terraform-aws-modules/eks/aws"
-  version = "~> 21.0"
+  source = "terraform-aws-modules/eks/aws"
 
-
-  name               = "eks-sandbox"
-  kubernetes_version = "1.33"
+  name = "eks-sandbox"
 
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
@@ -171,6 +168,8 @@ module "alb" {
 
   security_groups = [aws_security_group.alb_sg.id]
 
+  enable_deletion_protection = false
+
   tags = {
     Name        = "eks-sandbox-alb"
     Terraform   = "true"
@@ -192,6 +191,8 @@ resource "aws_lb_listener" "http_redirect_to_https" {
       status_code = "HTTP_301"
     }
   }
+
+  depends_on = [aws_acm_certificate_validation.alb_cert]
 }
 
 resource "aws_lb_listener" "https" {
@@ -200,7 +201,7 @@ resource "aws_lb_listener" "https" {
   protocol          = "HTTPS"
 
   ssl_policy      = "ELBSecurityPolicy-2016-08"
-  certificate_arn = aws_acm_certificate.alb_cert.arn
+  certificate_arn = aws_acm_certificate_validation.alb_cert.certificate_arn
 
   default_action {
     type             = "forward"
@@ -238,11 +239,38 @@ resource "aws_acm_certificate" "alb_cert" {
   domain_name       = module.zone.name
   validation_method = "DNS"
 
+  lifecycle {
+    create_before_destroy = true
+  }
+
   tags = {
     Name        = "eks-sandbox-alb-cert"
     Terraform   = "true"
     Environment = "dev"
   }
+}
+
+# ACM Certificate validation records
+resource "aws_route53_record" "cert_validation" {
+  for_each = {
+    for dvo in aws_acm_certificate.alb_cert.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  }
+
+  zone_id = module.zone.id
+  name    = each.value.name
+  type    = each.value.type
+  records = [each.value.record]
+  ttl     = 60
+}
+
+# Wait for certificate validation to complete
+resource "aws_acm_certificate_validation" "alb_cert" {
+  certificate_arn         = aws_acm_certificate.alb_cert.arn
+  validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
 }
 
 # Security Group for ALB
