@@ -29,22 +29,32 @@ After Terraform applies, verify that all resources are created successfully:
 
 ```sh
 # Check EKS cluster
-aws eks describe-cluster --name eks-sandbox --query 'cluster.status' --output text
+aws eks describe-cluster --name eks-sandbox --query 'cluster.[name,status,version,endpoint,resourcesVpcConfig.vpcId]' --output table
 
 # Check Node Group
-aws eks describe-nodegroup --cluster-name eks-sandbox --nodegroup-name eks-sandbox-node-group --query 'nodegroup.status' --output text
+aws eks describe-nodegroup --cluster-name eks-sandbox --nodegroup-name eks-sandbox-node-group --query 'nodegroup.[nodegroupName,status,instanceTypes,desiredSize,minSize,maxSize,subnets]' --output table
+
+# Check EC2 instances
+aws ec2 describe-instances --filters "Name=tag:eks:nodegroup-name,Values=eks-sandbox-node-group" --query 'Reservations[].Instances[].[InstanceId,State.Name,PrivateIpAddress,SecurityGroups[].GroupId]' --output table
 
 # Check ECR repository
-aws ecr describe-repositories --repository-names eks-sandbox-ecr-repository --query 'repositories[0].repositoryUri' --output text
+aws ecr describe-repositories --repository-names eks-sandbox-ecr-repository --query 'repositories[0].[repositoryName,repositoryUri,createdAt]' --output table
 
 # Check ALB
-aws elbv2 describe-load-balancers --query 'LoadBalancers[?LoadBalancerName==`eks-sandbox-alb`].[LoadBalancerName,State.Code,DNSName]' --output table
+aws elbv2 describe-load-balancers --query 'LoadBalancers[?LoadBalancerName==`eks-sandbox-alb`].[LoadBalancerName,State.Code,DNSName,VpcId,SecurityGroups,Scheme]' --output table
+
+# Check ALB Target Group
+aws elbv2 describe-target-groups --query 'TargetGroups[?TargetGroupName==`eks-sandbox-alb-tg`].[TargetGroupName,Port,Protocol,HealthCheckPath,VpcId]' --output table
 
 # Check Route53 hosted zone
-aws route53 list-hosted-zones --query 'HostedZones[?Name==`eks-sandbox.com.`].[Name,Id]' --output table
+aws route53 list-hosted-zones --query 'HostedZones[?Name==`eks-sandbox.com.`].[Name,Id,ResourceRecordSetCount]' --output table
 
 # Check ACM certificate
-aws acm list-certificates --query 'CertificateSummaryList[?DomainName==`eks-sandbox.com`].[DomainName,Status]' --output table
+aws acm list-certificates --query 'CertificateSummaryList[?DomainName==`eks-sandbox.com`].[DomainName,Status,Type]' --output table
+
+# Check Security Groups
+aws ec2 describe-security-groups --filters "Name=tag:Name,Values=alb-sg" --query 'SecurityGroups[*].[GroupName,GroupId,Description]' --output table
+aws ec2 describe-security-groups --filters "Name=tag:Name,Values=eks-sandbox-node*" --query 'SecurityGroups[*].[GroupName,GroupId,Description]' --output table
 ```
 
 Expected statuses:
@@ -52,6 +62,7 @@ Expected statuses:
 - Node Group: `ACTIVE`
 - ALB: `active`
 - ACM certificate: `ISSUED` (may take some time for DNS validation)
+- Security Groups: Should show ALB SG and Node Group SG
 
 ### Assume Developer Role
 
