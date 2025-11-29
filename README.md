@@ -25,8 +25,22 @@ A Kubernetes deployment sandbox with local (kind) and production (EKS) environme
 │   └── cluster/             # Cluster setup documentation
 │       ├── kind/            # Local development cluster
 │       └── eks/             # Production EKS cluster
-├── Dockerfile               # Container image definition
-└── compose.yaml             # Local Docker Compose setup
+└── Dockerfile               # Container image definition
+```
+
+## Local Development
+
+Run the application locally with Docker:
+
+```sh
+# Build image
+docker build -t app:local .
+
+# Run container
+docker run -p 8080:8080 app:local
+
+# Access
+curl http://localhost:8080
 ```
 
 ## Documentation
