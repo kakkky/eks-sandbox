@@ -192,8 +192,6 @@ resource "aws_lb_listener" "http_redirect_to_https" {
       status_code = "HTTP_301"
     }
   }
-
-  depends_on = [aws_acm_certificate_validation.public_cert]
 }
 
 resource "aws_lb_listener" "https" {
@@ -352,10 +350,14 @@ resource "aws_ecr_repository" "ecr_repository" {
 
 # vpc endpoint for accessing ECR from private subnet
 resource "aws_vpc_endpoint" "vpc_endpoint_for_ecr_api" {
-  vpc_id            = module.vpc.vpc_id
-  service_name      = "com.amazonaws.ap-northeast-1.ecr.api"
-  vpc_endpoint_type = "Interface"
-  subnet_ids        = module.vpc.private_subnets
+  vpc_id             = module.vpc.vpc_id
+  service_name       = "com.amazonaws.ap-northeast-1.ecr.api"
+  vpc_endpoint_type  = "Interface"
+  subnet_ids         = module.vpc.private_subnets
+  security_group_ids = [aws_security_group.vpc_endpoint_sg.id]
+
+  private_dns_enabled = true
+
   tags = {
     Name        = "eks-sandbox-ecr-api-endpoint"
     Terraform   = "true"
@@ -364,12 +366,45 @@ resource "aws_vpc_endpoint" "vpc_endpoint_for_ecr_api" {
 }
 
 resource "aws_vpc_endpoint" "vpc_endpoint_for_ecr_dkr" {
-  vpc_id            = module.vpc.vpc_id
-  service_name      = "com.amazonaws.ap-northeast-1.ecr.dkr"
-  vpc_endpoint_type = "Interface"
-  subnet_ids        = module.vpc.private_subnets
+  vpc_id             = module.vpc.vpc_id
+  service_name       = "com.amazonaws.ap-northeast-1.ecr.dkr"
+  vpc_endpoint_type  = "Interface"
+  subnet_ids         = module.vpc.private_subnets
+  security_group_ids = [aws_security_group.vpc_endpoint_sg.id]
+
+  private_dns_enabled = true
+
   tags = {
     Name        = "eks-sandbox-ecr-dkr-endpoint"
+    Terraform   = "true"
+    Environment = "dev"
+  }
+}
+
+# Security Group for VPC Endpoints（追加）
+resource "aws_security_group" "vpc_endpoint_sg" {
+  name        = "vpc-endpoint-sg"
+  description = "Security group for VPC endpoints"
+  vpc_id      = module.vpc.vpc_id
+
+  ingress {
+    description = "Allow HTTPS from VPC"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = [module.vpc.vpc_cidr_block]
+  }
+
+  egress {
+    description = "Allow all outbound"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name        = "vpc-endpoint-sg"
     Terraform   = "true"
     Environment = "dev"
   }
