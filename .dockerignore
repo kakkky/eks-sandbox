@@ -1,0 +1,32 @@
+# Git
+.git
+.gitignore
+
+# Kubernetes
+k8s/
+
+# Terraform
+terraform/
+
+# Documentation
+README.md
+*.md
+infra-img.png
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Build artifacts
+*.exe
+*.test
+*.out
+
+# Dependencies
+vendor/
