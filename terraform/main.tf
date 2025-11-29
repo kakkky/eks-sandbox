@@ -21,7 +21,8 @@ module "vpc" {
 module "eks" {
   source = "terraform-aws-modules/eks/aws"
 
-  name = "eks-sandbox"
+  name               = "eks-sandbox"
+  kubernetes_version = "1.31"
 
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
@@ -192,7 +193,7 @@ resource "aws_lb_listener" "http_redirect_to_https" {
     }
   }
 
-  depends_on = [aws_acm_certificate_validation.alb_cert]
+  depends_on = [aws_acm_certificate_validation.public_cert]
 }
 
 resource "aws_lb_listener" "https" {
@@ -201,7 +202,7 @@ resource "aws_lb_listener" "https" {
   protocol          = "HTTPS"
 
   ssl_policy      = "ELBSecurityPolicy-2016-08"
-  certificate_arn = aws_acm_certificate_validation.alb_cert.certificate_arn
+  certificate_arn = aws_acm_certificate_validation.public_cert.certificate_arn # attach issued certificate
 
   default_action {
     type             = "forward"
@@ -234,8 +235,8 @@ resource "aws_lb_target_group" "alb_tg_to_ng" {
   }
 }
 
-# ACM Certificate for ALB
-resource "aws_acm_certificate" "alb_cert" {
+# ACM Public Certificate for ALB HTTPS
+resource "aws_acm_certificate" "public_cert" {
   domain_name       = module.zone.name
   validation_method = "DNS"
 
@@ -251,9 +252,9 @@ resource "aws_acm_certificate" "alb_cert" {
 }
 
 # ACM Certificate validation records
-resource "aws_route53_record" "cert_validation" {
+resource "aws_route53_record" "acm_validation_dns_record" {
   for_each = {
-    for dvo in aws_acm_certificate.alb_cert.domain_validation_options : dvo.domain_name => {
+    for dvo in aws_acm_certificate.public_cert.domain_validation_options : dvo.domain_name => {
       name   = dvo.resource_record_name
       record = dvo.resource_record_value
       type   = dvo.resource_record_type
@@ -268,9 +269,9 @@ resource "aws_route53_record" "cert_validation" {
 }
 
 # Wait for certificate validation to complete
-resource "aws_acm_certificate_validation" "alb_cert" {
-  certificate_arn         = aws_acm_certificate.alb_cert.arn
-  validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
+resource "aws_acm_certificate_validation" "public_cert" {
+  certificate_arn         = aws_acm_certificate.public_cert.arn
+  validation_record_fqdns = [for record in aws_route53_record.acm_validation_dns_record : record.fqdn]
 }
 
 # Security Group for ALB
