@@ -2,7 +2,19 @@
 
 A Kubernetes deployment sandbox with local (kind) and production (EKS) environments.
 
-![alt text](infra-img.png)
+# Architecture
+Architecture of the repository is as follows:
+
+![alt text](./eks-sandbox.drawio.png "eks-sandbox Architecture")
+
+
+And the architecture with HTTPS is as follows:
+
+![alt text](./eks-sandbox-with-https.drawio.png "eks-sandbox Architecture with HTTPS")
+
+
+
+
 
 ## Repository Structure
 
