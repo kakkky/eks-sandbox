@@ -444,7 +444,21 @@ resource "aws_vpc_endpoint" "vpc_endpoint_for_ecr_dkr" {
   }
 }
 
-# Security Group for VPC Endpoints（追加）
+# vpc endpoint for accessing S3 from private subnet
+resource "aws_vpc_endpoint" "vpc_endpoint_for_s3" {
+  vpc_id            = module.vpc.vpc_id
+  service_name      = "com.amazonaws.ap-northeast-1.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = module.vpc.private_route_table_ids
+
+  tags = {
+    Name        = "eks-sandbox-s3-endpoint"
+    Terraform   = "true"
+    Environment = "dev"
+  }
+}
+
+# Security Group for VPC Endpoints
 resource "aws_security_group" "vpc_endpoint_sg" {
   name        = "vpc-endpoint-sg"
   description = "Security group for VPC endpoints"
