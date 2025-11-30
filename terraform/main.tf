@@ -495,3 +495,10 @@ resource "aws_iam_role_policy_attachment" "developer_ecr_fullaccess" {
   role       = aws_iam_role.developer_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess"
 }
+
+# ReadOnlyAccess provides read permissions for all AWS services
+# Including EKS, EC2, ELB, VPC, etc. for infrastructure verification
+resource "aws_iam_role_policy_attachment" "developer_readonly" {
+  role       = aws_iam_role.developer_role.name
+  policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
+}
