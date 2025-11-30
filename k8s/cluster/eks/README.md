@@ -17,11 +17,11 @@ This creates:
 - VPC with public/private subnets
 - EKS cluster (`eks-sandbox`)
 - EKS Node Group with t3.nano instances
-- Application Load Balancer (ALB)
-- ECR repository
+- Application Load Balancer (ALB) - HTTP only
+- ECR repository with VPC endpoints
 - IAM roles and policies
-- Route53 hosted zone
-- ACM certificate
+
+**Note**: HTTPS/Route53/ACM are commented out by default. See "HTTPS Setup" section if needed.
 
 ### Verify Infrastructure
 
@@ -46,11 +46,8 @@ aws elbv2 describe-load-balancers --query 'LoadBalancers[?LoadBalancerName==`eks
 # Check ALB Target Group
 aws elbv2 describe-target-groups --query 'TargetGroups[?TargetGroupName==`eks-sandbox-alb-tg`].[TargetGroupName,Port,Protocol,HealthCheckPath,VpcId]' --output table
 
-# Check Route53 hosted zone
-aws route53 list-hosted-zones --query 'HostedZones[?Name==`eks-sandbox.com.`].[Name,Id,ResourceRecordSetCount]' --output table
-
-# Check ACM certificate
-aws acm list-certificates --query 'CertificateSummaryList[?DomainName==`eks-sandbox.com`].[DomainName,Status,Type]' --output table
+# Check VPC Endpoints
+aws ec2 describe-vpc-endpoints --filters "Name=tag:Name,Values=eks-sandbox-ecr-*" --query 'VpcEndpoints[*].[VpcEndpointId,ServiceName,State]' --output table
 
 # Check Security Groups
 aws ec2 describe-security-groups --filters "Name=tag:Name,Values=alb-sg" --query 'SecurityGroups[*].[GroupName,GroupId,Description]' --output table
@@ -61,8 +58,8 @@ Expected statuses:
 - EKS cluster: `ACTIVE`
 - Node Group: `ACTIVE`
 - ALB: `active`
-- ACM certificate: `ISSUED` (may take some time for DNS validation)
-- Security Groups: Should show ALB SG and Node Group SG
+- VPC Endpoints: `available`
+- Security Groups: Should show ALB SG, Node Group SG, and VPC Endpoint SG
 
 ### Assume Developer Role
 
@@ -192,14 +189,17 @@ kubectl logs -n app-production -l app=app-http-server --all-containers=true
 
 ### Access Application
 
-Access the application via the ALB DNS name or Route53 domain:
+Access the application via the ALB DNS name:
 
 ```sh
 # Get ALB DNS name
-aws elbv2 describe-load-balancers --query 'LoadBalancers[?LoadBalancerName==`eks-sandbox-alb`].DNSName' --output text
+ALB_DNS=$(aws elbv2 describe-load-balancers --query 'LoadBalancers[?LoadBalancerName==`eks-sandbox-alb`].DNSName' --output text)
 
-# Or use Route53 domain (if DNS is configured)
-curl https://app.eks-sandbox.com
+# Access via HTTP
+curl http://$ALB_DNS
+
+# Or directly
+curl http://eks-sandbox-alb-xxxxxxxxx.ap-northeast-1.elb.amazonaws.com
 ```
 
 ## Infrastructure Updates
@@ -219,6 +219,53 @@ cd k8s
 helmfile -e production apply
 ```
 
+## HTTPS Setup (Optional)
+
+By default, this infrastructure uses HTTP only. To enable HTTPS with custom domain:
+
+### Prerequisites for HTTPS
+
+1. Register a domain (costs $13/year for .com)
+2. Uncomment HTTPS-related resources in `terraform/main.tf`:
+   - Route53 Zone
+   - ACM Certificate
+   - ACM Validation Records
+   - HTTPS Listener
+   - ALB Security Group port 443
+
+### Additional Verification Commands for HTTPS
+
+After enabling HTTPS, use these commands:
+
+```sh
+# Check Route53 hosted zone
+aws route53 list-hosted-zones --query 'HostedZones[?Name==`eks-sandbox.com.`].[Name,Id,ResourceRecordSetCount]' --output table
+
+# Check ACM certificate (wait for ISSUED status)
+aws acm list-certificates --query 'CertificateSummaryList[?DomainName==`eks-sandbox.com`].[DomainName,Status,Type]' --output table
+
+# Check ACM certificate details
+aws acm describe-certificate --certificate-arn <CERT_ARN> --query 'Certificate.[DomainName,Status,DomainValidationOptions[0].ValidationStatus]' --output table
+
+# Check Route53 DNS records
+ZONE_ID=$(aws route53 list-hosted-zones --query 'HostedZones[?Name==`eks-sandbox.com.`].Id' --output text)
+aws route53 list-resource-record-sets --hosted-zone-id $ZONE_ID --query 'ResourceRecordSets[*].[Name,Type,ResourceRecords[0].Value]' --output table
+
+# Test HTTPS access
+curl https://app.eks-sandbox.com
+
+# Test HTTP to HTTPS redirect
+curl -I http://app.eks-sandbox.com
+# Should see: Location: https://app.eks-sandbox.com/
+```
+
+### HTTPS Costs
+
+- Domain registration: $13/year (.com)
+- Route53 hosted zone: $0.50/month
+- ACM certificate: Free
+- **Total: ~$19/year**
+
 ## Cleanup
 
 To completely tear down the EKS environment:
@@ -236,3 +283,5 @@ terraform destroy
 ```
 
 **Note**: Make sure to destroy Kubernetes resources first to avoid orphaned AWS resources (like LoadBalancers) that Terraform doesn't track.
+
+**Important**: If you registered a domain via Route53, it cannot be deleted via `terraform destroy`. Domains must be managed manually in AWS Console and cost $13/year minimum.
