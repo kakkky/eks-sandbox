@@ -22,7 +22,7 @@ module "eks" {
   source = "terraform-aws-modules/eks/aws"
 
   name               = "eks-sandbox"
-  kubernetes_version = "1.31"
+  kubernetes_version = "1.33"
 
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
@@ -62,6 +62,8 @@ module "eks_node_group" {
 
   name         = "eks-sandbox-node-group"
   cluster_name = module.eks.cluster_name
+
+  kubernetes_version = "1.33"
 
   subnet_ids   = module.vpc.private_subnets
   desired_size = 1
@@ -179,34 +181,42 @@ module "alb" {
 }
 
 # ALB Listeners
-resource "aws_lb_listener" "http_redirect_to_https" {
+resource "aws_lb_listener" "http" {
   load_balancer_arn = module.alb.arn
   port              = 80
   protocol          = "HTTP"
 
-  default_action {
-    type = "redirect"
-    redirect {
-      port        = "443"
-      protocol    = "HTTPS"
-      status_code = "HTTP_301"
-    }
-  }
-}
-
-resource "aws_lb_listener" "https" {
-  load_balancer_arn = module.alb.arn
-  port              = 443
-  protocol          = "HTTPS"
-
-  ssl_policy      = "ELBSecurityPolicy-2016-08"
-  certificate_arn = aws_acm_certificate_validation.public_cert.certificate_arn # attach issued certificate
-
+  # For HTTP-only: Forward directly to target group
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.alb_tg_to_ng.arn
   }
+
+  # For HTTPS: Redirect HTTP to HTTPS (uncomment when HTTPS is enabled)
+  # default_action {
+  #   type = "redirect"
+  #   redirect {
+  #     port        = "443"
+  #     protocol    = "HTTPS"
+  #     status_code = "HTTP_301"
+  #   }
+  # }
 }
+
+# HTTPS Listener (TODO: Uncomment this when enabling HTTPS)
+# resource "aws_lb_listener" "https" {
+#   load_balancer_arn = module.alb.arn
+#   port              = 443
+#   protocol          = "HTTPS"
+#
+#   ssl_policy      = "ELBSecurityPolicy-2016-08"
+#   certificate_arn = aws_acm_certificate_validation.public_cert.certificate_arn
+#
+#   default_action {
+#     type             = "forward"
+#     target_group_arn = aws_lb_target_group.alb_tg_to_ng.arn
+#   }
+# }
 
 # target group for listener of ALB
 resource "aws_lb_target_group" "alb_tg_to_ng" {
@@ -233,44 +243,44 @@ resource "aws_lb_target_group" "alb_tg_to_ng" {
   }
 }
 
-# ACM Public Certificate for ALB HTTPS
-resource "aws_acm_certificate" "public_cert" {
-  domain_name       = module.zone.name
-  validation_method = "DNS"
+# ACM Public Certificate for ALB HTTPS (TODO: Uncomment this when enabling HTTPS)
+# resource "aws_acm_certificate" "public_cert" {
+#   domain_name       = module.zone.name
+#   validation_method = "DNS"
+#
+#   lifecycle {
+#     create_before_destroy = true
+#   }
+#
+#   tags = {
+#     Name        = "eks-sandbox-alb-cert"
+#     Terraform   = "true"
+#     Environment = "dev"
+#   }
+# }
 
-  lifecycle {
-    create_before_destroy = true
-  }
+# ACM Certificate validation records (TODO: Uncomment this when enabling HTTPS)
+# resource "aws_route53_record" "acm_validation_dns_record" {
+#   for_each = {
+#     for dvo in aws_acm_certificate.public_cert.domain_validation_options : dvo.domain_name => {
+#       name   = dvo.resource_record_name
+#       record = dvo.resource_record_value
+#       type   = dvo.resource_record_type
+#     }
+#   }
+#
+#   zone_id = module.zone.id
+#   name    = each.value.name
+#   type    = each.value.type
+#   records = [each.value.record]
+#   ttl     = 60
+# }
 
-  tags = {
-    Name        = "eks-sandbox-alb-cert"
-    Terraform   = "true"
-    Environment = "dev"
-  }
-}
-
-# ACM Certificate validation records
-resource "aws_route53_record" "acm_validation_dns_record" {
-  for_each = {
-    for dvo in aws_acm_certificate.public_cert.domain_validation_options : dvo.domain_name => {
-      name   = dvo.resource_record_name
-      record = dvo.resource_record_value
-      type   = dvo.resource_record_type
-    }
-  }
-
-  zone_id = module.zone.id
-  name    = each.value.name
-  type    = each.value.type
-  records = [each.value.record]
-  ttl     = 60
-}
-
-# Wait for certificate validation to complete
-resource "aws_acm_certificate_validation" "public_cert" {
-  certificate_arn         = aws_acm_certificate.public_cert.arn
-  validation_record_fqdns = [for record in aws_route53_record.acm_validation_dns_record : record.fqdn]
-}
+# Wait for certificate validation to complete (TODO: Uncomment this when enabling HTTPS)
+# resource "aws_acm_certificate_validation" "public_cert" {
+#   certificate_arn         = aws_acm_certificate.public_cert.arn
+#   validation_record_fqdns = [for record in aws_route53_record.acm_validation_dns_record : record.fqdn]
+# }
 
 # Security Group for ALB
 resource "aws_security_group" "alb_sg" {
@@ -286,13 +296,14 @@ resource "aws_security_group" "alb_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  ingress {
-    description = "Allow HTTPS traffic"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  # HTTPS ingress rule (TODO: Uncomment this when enabling HTTPS)
+  # ingress {
+  #   description = "Allow HTTPS traffic"
+  #   from_port   = 443
+  #   to_port     = 443
+  #   protocol    = "tcp"
+  #   cidr_blocks = ["0.0.0.0/0"]
+  # }
 
   egress {
     description = "Allow all outbound traffic"
@@ -309,29 +320,81 @@ resource "aws_security_group" "alb_sg" {
   }
 }
 
-# Route53 Zone
-module "zone" {
-  source = "terraform-aws-modules/route53/aws"
+# Route53 Zone (TODO: Uncomment this when enabling HTTPS with custom domain)
+# module "zone" {
+#   source = "terraform-aws-modules/route53/aws"
+#
+#   name = "eks-sandbox.com"
+#
+#   records = {
+#     app = {
+#       type = "A"
+#       name = "app"
+#       alias = {
+#         name    = module.alb.dns_name
+#         zone_id = module.alb.zone_id
+#       }
+#     }
+#   }
+#
+#   tags = {
+#     Name        = "eks-sandbox-zone"
+#     Terraform   = "true"
+#     Environment = "dev"
+#   }
+# }
 
-  name = "eks-sandbox.com"
-
-  records = {
-    app = {
-      type = "A"
-      name = "app"
-      alias = {
-        name    = module.alb.dns_name
-        zone_id = module.alb.zone_id
-      }
-    }
-  }
-
-  tags = {
-    Name        = "eks-sandbox-zone"
-    Terraform   = "true"
-    Environment = "dev"
-  }
-}
+# Domain Registration (TODO: Uncomment this when enabling HTTPS with domain registration)
+# Note: Costs $13/year, requires us-east-1 provider, and cannot be easily deleted
+# resource "aws_route53domains_registered_domain" "main" {
+#   domain_name = "eks-sandbox.com"
+#
+#   # Contact information (required for domain registration)
+#   admin_contact {
+#     contact_type   = "PERSON"
+#     first_name     = "Your"
+#     last_name      = "Name"
+#     email          = "your-email@example.com"
+#     phone_number   = "+81.9012345678"  # Format: +CountryCode.PhoneNumber
+#     address_line_1 = "1-1-1 Chiyoda"
+#     city           = "Tokyo"
+#     country_code   = "JP"
+#     zip_code       = "100-0001"
+#   }
+#
+#   registrant_contact {
+#     contact_type   = "PERSON"
+#     first_name     = "Your"
+#     last_name      = "Name"
+#     email          = "your-email@example.com"
+#     phone_number   = "+81.9012345678"
+#     address_line_1 = "1-1-1 Chiyoda"
+#     city           = "Tokyo"
+#     country_code   = "JP"
+#     zip_code       = "100-0001"
+#   }
+#
+#   tech_contact {
+#     contact_type   = "PERSON"
+#     first_name     = "Your"
+#     last_name      = "Name"
+#     email          = "your-email@example.com"
+#     phone_number   = "+81.9012345678"
+#     address_line_1 = "1-1-1 Chiyoda"
+#     city           = "Tokyo"
+#     country_code   = "JP"
+#     zip_code       = "100-0001"
+#   }
+#
+#   # Auto-renew domain annually
+#   auto_renew = true
+#
+#   tags = {
+#     Name        = "eks-sandbox-domain"
+#     Terraform   = "true"
+#     Environment = "dev"
+#   }
+# }
 
 # ecr repository
 resource "aws_ecr_repository" "ecr_repository" {
