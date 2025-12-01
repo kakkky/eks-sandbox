@@ -1,19 +1,19 @@
 environments:
   development:
-    kubeContext: kind-sandbox
+    kubeContext: kind-sandbox   # kind 用 context
     values:
       - values/development/values.yaml
 
   production:
-    kubeContext: eks-sandbox 
+    kubeContext: eks-sandbox   # EKS 用 context
     values:
       - values/production/values.yaml
 ---
 releases:
   - name: app
-    namespace: "app-{{ .Environment.Name }}"
+    namespace: "{{ .Environment.Name }}"  # development / production
     chart: ./charts/http-server
     values:
       - values/{{ .Environment.Name }}/values.yaml
     installed: true
-    atomic: false # Rollback on failure is disabled for learning purposes
+    atomic: true

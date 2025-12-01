@@ -1,19 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-{{ .Chart.Name }}
+  name: {{ .Values.deployment.name }}-{{ .Chart.Name }}
   labels:
-    app: {{ .Release.Name }}-{{ .Chart.Name }}
+    app: {{ .Chart.Name }}
 spec:
   replicas: {{ .Values.deployment.replicaCount }}
   selector:
     matchLabels:
-      app: {{ .Release.Name }}-{{ .Chart.Name }}
+      app: {{ .Chart.Name }}
   template:
     metadata:
       labels:
-        app: {{ .Release.Name }}-{{ .Chart.Name }}
+        app: {{ .Chart.Name }}
     spec:
+      nodeSelector:
+        role: {{ .Values.deployment.nodeSelector.role }}
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.deployment.image.repository }}:{{ .Values.deployment.image.tag }}"
@@ -23,15 +25,15 @@ spec:
             requests:
               cpu: {{ .Values.deployment.resources.requests.cpu }}
               memory: {{ .Values.deployment.resources.requests.memory }}
-            limits:            
+            limits:
               cpu: {{ .Values.deployment.resources.limits.cpu }}
               memory: {{ .Values.deployment.resources.limits.memory }}
-        - name: nginx
+        - name: nginx-sidecar
           image: nginx:1.25
           ports:
             - containerPort: 80
           volumeMounts:
-            - name: nginx-conf
+            - name: nginx-config
               mountPath: /etc/nginx/nginx.conf
               subPath: nginx.conf
           resources:
@@ -42,28 +44,6 @@ spec:
               cpu: {{ .Values.deployment.nginx.resources.limits.cpu }}
               memory: {{ .Values.deployment.nginx.resources.limits.memory }}
       volumes:
-        - name: nginx-conf
+        - name: nginx-config
           configMap:
-            name: {{ .Release.Name }}-nginx-conf
-            items:
-              - key: nginx.conf
-                path: nginx.conf
-
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: {{ .Release.Name }}-nginx-conf
-data:
-  nginx.conf: |
-    events {}
-    http {
-      server {
-        listen 80;
-        location / {
-          proxy_pass http://localhost:{{ .Values.deployment.containerPort }};
-          proxy_set_header Host $host;
-          proxy_set_header X-Real-IP $remote_addr;
-        }
-      }
-    }
+            name: {{ .Chart.Name }}-nginx-config
