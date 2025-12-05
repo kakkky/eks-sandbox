@@ -91,6 +91,16 @@ module "eks_node_group" {
     }
   }
 
+  security_group_egress_rules = {
+    all = {
+      description = "Allow all outbound traffic"
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      cidr_ipv4   = "0.0.0.0/0"
+    }
+  }
+
   tags = {
     Name        = "eks-sandbox-node-group"
     Terraform   = "true"
