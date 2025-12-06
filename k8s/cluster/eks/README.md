@@ -3,6 +3,29 @@ At production environment, we use [Amazon EKS](https://aws.amazon.com/eks/) to r
 
 ## Prerequisites
 
+### Edit file to assume developer role
+To specify which IAM users can assume the `developer_role` in Terraform, edit the variable `identifiers` in your configuration and set the default value to your own IAM user ARN.
+
+Example:
+```hcl
+// terraform/main.tf
+data "aws_iam_policy_document" "developer_assume_role_policy" {
+  statement {
+    sid    = "AllowAssumeRoleForDeveloper"
+    effect = "Allow"
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::<YOUR_ACCOUNT_ID>:user/<YOUR_USER_NAME>"]
+    }
+    actions = ["sts:AssumeRole"]
+  }
+}
+```
+
+Assuming the `developer_role` allows you to run `terraform apply` and perform `kubectl` operations on the EKS cluster.
+
+If you want to allow multiple users, add their ARNs to the array.
+
 ### Terraform Infrastructure
 Before deploying to EKS, ensure the infrastructure is provisioned:
 
@@ -16,12 +39,27 @@ terraform apply
 This creates:
 - VPC with public/private subnets
 - EKS cluster (`eks-sandbox`)
-- EKS Node Group with t3.nano instances
+- EKS Node Group with t3.micro instances
 - Application Load Balancer (ALB) - HTTP only
 - ECR repository with VPC endpoints
 - IAM roles and policies
 
-**Note**: HTTPS/Route53/ACM are commented out by default. See "HTTPS Setup" section if needed.
+### Add Assume Role Settings to AWS Provider
+To allow Terraform to assume the `developer_role`, uncomment the `assume_role` block in `terraform/provider.tf`:
+```hcl
+provider "aws" {
+  region  = "ap-northeast-1"
+  profile = "default"
+  assume_role {
+    role_arn = aws_iam_role.developer_role.arn
+  }
+}
+```
+
+And run:
+```sh
+terraform apply
+```
 
 ### Verify Infrastructure
 
@@ -61,43 +99,11 @@ Expected statuses:
 - VPC Endpoints: `available`
 - Security Groups: Should show ALB SG, Node Group SG, and VPC Endpoint SG
 
-### Assume Developer Role
-
-Before accessing EKS cluster, assume the `developer-role` that has necessary permissions.
-
-#### Setup AWS Profile (One-time setup)
-
-Add the following to `~/.aws/config`:
-
-```ini
-[profile developer]
-role_arn = arn:aws:iam::<YOUR_ACCOUNT_ID>:role/developer-role
-source_profile = default
-```
-
-You can get the role ARN:
-```sh
-# Get role ARN
-aws iam get-role --role-name developer-role --query 'Role.Arn' --output text
-```
-
-#### Use the Profile
-
-```sh
-export AWS_PROFILE=developer
-```
-
-Verify:
-```sh
-aws sts get-caller-identity
-# Should show: "Arn": "...assumed-role/developer-role/..."
-```
-
 ### Configure kubectl
-After assuming the developer role, configure kubectl to access the EKS cluster:
+Configure kubectl to access the EKS cluster:
 
 ```sh
-aws eks update-kubeconfig --region ap-northeast-1 --name eks-sandbox
+aws eks update-kubeconfig --region ap-northeast-1 --name eks-sandbox --alias eks-sandbox
 ```
 
 This creates the `eks-sandbox` context in your kubeconfig.
@@ -219,53 +225,6 @@ cd k8s
 helmfile -e production apply
 ```
 
-## HTTPS Setup (Optional)
-
-By default, this infrastructure uses HTTP only. To enable HTTPS with custom domain:
-
-### Prerequisites for HTTPS
-
-1. Register a domain (costs $13/year for .com)
-2. Uncomment HTTPS-related resources in `terraform/main.tf`:
-   - Route53 Zone
-   - ACM Certificate
-   - ACM Validation Records
-   - HTTPS Listener
-   - ALB Security Group port 443
-
-### Additional Verification Commands for HTTPS
-
-After enabling HTTPS, use these commands:
-
-```sh
-# Check Route53 hosted zone
-aws route53 list-hosted-zones --query 'HostedZones[?Name==`eks-sandbox.com.`].[Name,Id,ResourceRecordSetCount]' --output table
-
-# Check ACM certificate (wait for ISSUED status)
-aws acm list-certificates --query 'CertificateSummaryList[?DomainName==`eks-sandbox.com`].[DomainName,Status,Type]' --output table
-
-# Check ACM certificate details
-aws acm describe-certificate --certificate-arn <CERT_ARN> --query 'Certificate.[DomainName,Status,DomainValidationOptions[0].ValidationStatus]' --output table
-
-# Check Route53 DNS records
-ZONE_ID=$(aws route53 list-hosted-zones --query 'HostedZones[?Name==`eks-sandbox.com.`].Id' --output text)
-aws route53 list-resource-record-sets --hosted-zone-id $ZONE_ID --query 'ResourceRecordSets[*].[Name,Type,ResourceRecords[0].Value]' --output table
-
-# Test HTTPS access
-curl https://app.eks-sandbox.com
-
-# Test HTTP to HTTPS redirect
-curl -I http://app.eks-sandbox.com
-# Should see: Location: https://app.eks-sandbox.com/
-```
-
-### HTTPS Costs
-
-- Domain registration: $13/year (.com)
-- Route53 hosted zone: $0.50/month
-- ACM certificate: Free
-- **Total: ~$19/year**
-
 ## Cleanup
 
 To completely tear down the EKS environment:
@@ -282,6 +241,3 @@ cd terraform
 terraform destroy
 ```
 
-**Note**: Make sure to destroy Kubernetes resources first to avoid orphaned AWS resources (like LoadBalancers) that Terraform doesn't track.
-
-**Important**: If you registered a domain via Route53, it cannot be deleted via `terraform destroy`. Domains must be managed manually in AWS Console and cost $13/year minimum.
