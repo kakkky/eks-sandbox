@@ -1,9 +1,9 @@
 deployment:
   name: app
-  replicaCount: 3
+  replicaCount: 1
   image:
-    repository: app
-    tag: "20251125015825"
+    repository: 846869429016.dkr.ecr.ap-northeast-1.amazonaws.com/eks-sandbox-ecr-repository
+    tag: "20251206224539"
   containerPort: 8080
   resources:
     requests:
@@ -20,7 +20,6 @@ deployment:
       limits:
         cpu: "100m"
         memory: "128Mi"
-
 service:
   type: NodePort
   port: 8080
