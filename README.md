@@ -7,12 +7,6 @@ Architecture of the repository is as follows:
 
 ![alt text](./eks-sandbox.drawio.png "eks-sandbox Architecture")
 
-
-And the architecture with HTTPS is as follows:
-
-![alt text](./eks-sandbox-with-https.drawio.png "eks-sandbox Architecture with HTTPS")
-
-
 ## Repository Structure
 
 ```
