@@ -1,10 +1,7 @@
 provider "aws" {
-  region = "ap-northeast-1"
+  region  = "ap-northeast-1"
+  profile = "default"
+  # assume_role {
+  #   role_arn = aws_iam_role.developer_role.arn
+  # }
 }
-
-# us-east-1 provider (Required for Route53 domain registration)
-# Uncomment when using aws_route53domains_registered_domain resource
-# provider "aws" {
-#   alias  = "us-east-1"
-#   region = "us-east-1"
-# }
