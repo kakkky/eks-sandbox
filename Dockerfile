@@ -7,8 +7,7 @@ COPY . .
 
 WORKDIR /src/app
 
-RUN go build -o todo-app main.go
-
+RUN GOOS=linux GOARCH=amd64 go build -o todo-app main.go
 # Runtime stage
 FROM debian:bookworm-slim
 
