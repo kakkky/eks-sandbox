@@ -3,28 +3,28 @@ At production environment, we use [Amazon EKS](https://aws.amazon.com/eks/) to r
 
 ## Prerequisites
 
-### Edit file to assume developer role
-To specify which IAM users can assume the `developer_role` in Terraform, edit the variable `identifiers` in your configuration and set the default value to your own IAM user ARN.
+### Configure Your IAM User
+To specify your IAM user for EKS and ECR access, edit the variables in `terraform/main.tf` and set them to your own IAM user information:
 
 Example:
 ```hcl
 // terraform/main.tf
-data "aws_iam_policy_document" "developer_assume_role_policy" {
-  statement {
-    sid    = "AllowAssumeRoleForDeveloper"
-    effect = "Allow"
-    principals {
-      type        = "AWS"
-      identifiers = ["arn:aws:iam::<YOUR_ACCOUNT_ID>:user/<YOUR_USER_NAME>"]
-    }
-    actions = ["sts:AssumeRole"]
-  }
+variable "developer_user_name" {
+  description = "IAM user name for developer"
+  type        = string
+  default     = "<YOUR_USER_NAME>"
+}
+
+variable "developer_user_arn" {
+  description = "IAM user ARN for developer"
+  type        = string
+  default     = "arn:aws:iam::<YOUR_ACCOUNT_ID>:user/<YOUR_USER_NAME>"
 }
 ```
 
-Assuming the `developer_role` allows you to run `terraform apply` and perform `kubectl` operations on the EKS cluster.
-
-If you want to allow multiple users, add their ARNs to the array.
+These variables are used to:
+- Grant EKS cluster admin access via `access_entries`
+- Attach ECR full access and read-only policies to your IAM user
 
 ### Terraform Infrastructure
 Before deploying to EKS, ensure the infrastructure is provisioned:
@@ -43,23 +43,6 @@ This creates:
 - Application Load Balancer (ALB) - HTTP only
 - ECR repository with VPC endpoints
 - IAM roles and policies
-
-### Add Assume Role Settings to AWS Provider
-To allow Terraform to assume the `developer_role`, uncomment the `assume_role` block in `terraform/provider.tf`:
-```hcl
-provider "aws" {
-  region  = "ap-northeast-1"
-  profile = "default"
-  assume_role {
-    role_arn = aws_iam_role.developer_role.arn
-  }
-}
-```
-
-And run:
-```sh
-terraform apply
-```
 
 ### Verify Infrastructure
 
