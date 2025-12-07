@@ -34,7 +34,7 @@ module "eks" {
 
   access_entries = {
     developer = {
-      principal_arn     = aws_iam_role.developer_role.arn
+      principal_arn     = var.developer_user_arn
       kubernetes_groups = []
 
       policy_associations = {
@@ -365,36 +365,29 @@ resource "aws_security_group" "vpc_endpoint_sg" {
   }
 }
 
-# IAM role for developer
-resource "aws_iam_role" "developer_role" {
-  name               = "DeveloperRole"
-  assume_role_policy = data.aws_iam_policy_document.developer_assume_role_policy.json
+# Variables for IAM user
+variable "developer_user_name" {
+  description = "IAM user name for developer"
+  type        = string
+  default     = "yuta"
 }
 
-data "aws_iam_policy_document" "developer_assume_role_policy" {
-  statement {
-    sid    = "AllowAssumeRoleForDeveloper"
-    effect = "Allow"
-    principals {
-      type        = "AWS"
-      identifiers = ["arn:aws:iam::846869429016:user/yuta"]
-    }
-    actions = ["sts:AssumeRole"]
-  }
+variable "developer_user_arn" {
+  description = "IAM user ARN for developer"
+  type        = string
+  default     = "arn:aws:iam::846869429016:user/yuta"
 }
 
-
-
-resource "aws_iam_role_policy_attachment" "developer_ecr_fullaccess" {
-  role       = aws_iam_role.developer_role.name
+# IAM user policy attachments for developer
+resource "aws_iam_user_policy_attachment" "developer_ecr_fullaccess" {
+  user       = var.developer_user_name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess"
 }
 
 # ReadOnlyAccess provides read permissions for all AWS services
 # Including EKS, EC2, ELB, VPC, etc. for infrastructure verification
-resource "aws_iam_role_policy_attachment" "developer_readonly" {
-  role       = aws_iam_role.developer_role.name
+resource "aws_iam_user_policy_attachment" "developer_readonly" {
+  user       = var.developer_user_name
   policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
 }
-
 
