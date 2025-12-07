@@ -4,17 +4,11 @@ At production environment, we use [Amazon EKS](https://aws.amazon.com/eks/) to r
 ## Prerequisites
 
 ### Configure Your IAM User
-To specify your IAM user for EKS and ECR access, edit the variables in `terraform/main.tf` and set them to your own IAM user information:
+To specify your IAM user for EKS access, edit the variables in `terraform/main.tf` and set them to your own IAM user arn:
 
 Example:
 ```hcl
 // terraform/main.tf
-variable "developer_user_name" {
-  description = "IAM user name for developer"
-  type        = string
-  default     = "<YOUR_USER_NAME>"
-}
-
 variable "developer_user_arn" {
   description = "IAM user ARN for developer"
   type        = string
@@ -43,44 +37,6 @@ This creates:
 - Application Load Balancer (ALB) - HTTP only
 - ECR repository with VPC endpoints
 - IAM roles and policies
-
-### Verify Infrastructure
-
-After Terraform applies, verify that all resources are created successfully:
-
-```sh
-# Check EKS cluster
-aws eks describe-cluster --name eks-sandbox --query 'cluster.[name,status,version,endpoint,resourcesVpcConfig.vpcId]' --output table
-
-# Check Node Group
-aws eks describe-nodegroup --cluster-name eks-sandbox --nodegroup-name eks-sandbox-node-group --query 'nodegroup.[nodegroupName,status,instanceTypes,desiredSize,minSize,maxSize,subnets]' --output table
-
-# Check EC2 instances
-aws ec2 describe-instances --filters "Name=tag:eks:nodegroup-name,Values=eks-sandbox-node-group" --query 'Reservations[].Instances[].[InstanceId,State.Name,PrivateIpAddress,SecurityGroups[].GroupId]' --output table
-
-# Check ECR repository
-aws ecr describe-repositories --repository-names eks-sandbox-ecr-repository --query 'repositories[0].[repositoryName,repositoryUri,createdAt]' --output table
-
-# Check ALB
-aws elbv2 describe-load-balancers --query 'LoadBalancers[?LoadBalancerName==`eks-sandbox-alb`].[LoadBalancerName,State.Code,DNSName,VpcId,SecurityGroups,Scheme]' --output table
-
-# Check ALB Target Group
-aws elbv2 describe-target-groups --query 'TargetGroups[?TargetGroupName==`eks-sandbox-alb-tg`].[TargetGroupName,Port,Protocol,HealthCheckPath,VpcId]' --output table
-
-# Check VPC Endpoints
-aws ec2 describe-vpc-endpoints --filters "Name=tag:Name,Values=eks-sandbox-ecr-*" --query 'VpcEndpoints[*].[VpcEndpointId,ServiceName,State]' --output table
-
-# Check Security Groups
-aws ec2 describe-security-groups --filters "Name=tag:Name,Values=alb-sg" --query 'SecurityGroups[*].[GroupName,GroupId,Description]' --output table
-aws ec2 describe-security-groups --filters "Name=tag:Name,Values=eks-sandbox-node*" --query 'SecurityGroups[*].[GroupName,GroupId,Description]' --output table
-```
-
-Expected statuses:
-- EKS cluster: `ACTIVE`
-- Node Group: `ACTIVE`
-- ALB: `active`
-- VPC Endpoints: `available`
-- Security Groups: Should show ALB SG, Node Group SG, and VPC Endpoint SG
 
 ### Configure kubectl
 Configure kubectl to access the EKS cluster:

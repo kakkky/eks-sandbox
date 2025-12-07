@@ -366,20 +366,8 @@ resource "aws_security_group" "vpc_endpoint_sg" {
 }
 
 # Variables for IAM user
-variable "developer_user_name" {
-  description = "IAM user name for developer"
-  type        = string
-  default     = "yuta"
-}
-
 variable "developer_user_arn" {
   description = "IAM user ARN for developer"
   type        = string
   default     = "arn:aws:iam::846869429016:user/yuta"
-}
-
-# IAM user policy attachments for developer
-resource "aws_iam_user_policy_attachment" "developer_ecr_fullaccess" {
-  user       = var.developer_user_name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess"
 }
