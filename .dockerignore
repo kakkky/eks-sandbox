@@ -2,16 +2,20 @@
 .git
 .gitignore
 
-# Kubernetes
+# Kubernetes (不要 - イメージには含めない)
 k8s/
 
-# Terraform
+# Terraform (不要 - イメージには含めない)
 terraform/
 
-# Documentation
+# Documentation (不要 - イメージには含めない)
 README.md
 *.md
-infra-img.png
+*.png
+*.drawio.png
+
+# Docker関連 (不要 - イメージには含めない)
+Dockerfile.single
 
 # IDE
 .vscode/
