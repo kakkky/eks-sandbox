@@ -1,9 +1,14 @@
 deployment:
   name: app
   replicaCount: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 100%
+      maxUnavailable: 25%
   image:
     repository: app
-    tag: "20251125015825"
+    tag: "local"
   containerPort: 8080
   resources:
     requests:
@@ -20,6 +25,13 @@ deployment:
       limits:
         cpu: "100m"
         memory: "128Mi"
+
+hpa:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 5
+  targetCpuUtilizationPercentage: 60
+  targetMemoryUtilizationPercentage: 70
 
 service:
   type: NodePort

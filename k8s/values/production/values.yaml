@@ -1,6 +1,11 @@
 deployment:
   name: app
   replicaCount: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 100%
+      maxUnavailable: 25%
   image:
     repository: 846869429016.dkr.ecr.ap-northeast-1.amazonaws.com/eks-sandbox-ecr-repository
     tag: "20251206224539"
@@ -20,6 +25,12 @@ deployment:
       limits:
         cpu: "100m"
         memory: "128Mi"
+hpa:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 3
+  targetCpuUtilizationPercentage: 60
+  targetMemoryUtilizationPercentage: 70
 service:
   type: NodePort
   port: 8080
