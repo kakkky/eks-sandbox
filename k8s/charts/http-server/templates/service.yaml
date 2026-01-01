@@ -12,4 +12,6 @@ spec:
     - name: http
       port: {{ .Values.service.port }}
       targetPort: 80 # transfer to nginx container port
+      {{- if eq .Values.service.type "NodePort" }}
       nodePort: {{ .Values.service.nodePort }}
+      {{- end }}
