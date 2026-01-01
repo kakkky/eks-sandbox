@@ -29,6 +29,14 @@ deployment:
         cpu: "100m"
         memory: "128Mi"
 
+# Horizontal Pod Autoscaler settings
+hpa:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 5
+  targetCpuUtilizationPercentage: 60
+  targetMemoryUtilizationPercentage: 70
+
 # Service settings
 service:
   type: NodePort
