@@ -5,5 +5,5 @@ nodes:
   - role: worker
     extraPortMappings:
       - containerPort: 30080 # NodePort
-        hostPort: 8080
+        hostPort: 80
         protocol: TCP

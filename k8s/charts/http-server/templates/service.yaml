@@ -10,7 +10,7 @@ spec:
     app: {{ .Release.Name }}-{{ .Chart.Name }}
   ports:
     - name: http
-      port: {{ .Values.service.port }}
+      port: 80
       targetPort: 80 # transfer to nginx container port
       {{- if eq .Values.service.type "NodePort" }}
       nodePort: {{ .Values.service.nodePort }}
